@@ -68,6 +68,3 @@ dmypy.json
 
 # Logs
 *.log
-
-# Ignore req.txt if dynamically generated
-req.txt
