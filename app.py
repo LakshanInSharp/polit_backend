@@ -2,10 +2,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import Base, SessionLocal, sync_engine, AsyncSessionLocal  # Corrected async session import
 from models.user_model import Role
-from routes.user_routes import router as user_router
+from routes.auth_routes import auth_router
+from routes.user_routes import user_router
+from service import user_service
 from service.user_service import create_initial_admin_if_needed  # Import from user_service
 
 # Create all tables (synchronously)
@@ -39,7 +40,9 @@ app.add_middleware(
 )
 
 # Include your application routes
-app.include_router(user_router)
+app.include_router(user_router,dependencies=[Depends(user_service.get_current_user)])
+app.include_router(auth_router)
+
 
 # Run async startup logic
 @app.on_event("startup")
