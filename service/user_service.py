@@ -4,6 +4,7 @@ import os
 import random
 import secrets
 import smtplib
+from sqlite3 import IntegrityError
 import string
 from uuid import uuid4
 from fastapi import Depends, HTTPException, Cookie
@@ -147,50 +148,54 @@ async def get_all_users(db: AsyncSession):
         for detail, role in users
     ]
 
+
 async def update_user(
     db: AsyncSession,
     user_id: int,
     data: AddUser,
     modified_by: int
 ) -> dict | None:
-   
+    # 1️⃣ Fetch the User record
     res1 = await db.execute(select(User).where(User.id == user_id))
     user = res1.scalar_one_or_none()
     if not user:
         return None
 
-
+    # 2️⃣ Fetch the Role
     res2 = await db.execute(select(Role).where(Role.name == data.role))
     role = res2.scalar_one_or_none()
     if not role:
         raise ValueError(f"Role '{data.role}' not found")
 
-   
+    # 3️⃣ Apply allowed updates to User
     user.role_id     = role.id
     user.status      = data.status
     user.modified_by = modified_by
 
-   
+    # 4️⃣ Fetch & update the UserDetail (but do NOT change email)
     res3 = await db.execute(select(UserDetail).where(UserDetail.user_id == user_id))
     detail = res3.scalar_one_or_none()
     if detail:
         detail.full_name = data.full_name
-        detail.email     = data.email
+        # detail.email = detail.email   ← leave as-is
         detail.status    = data.status
 
+    # 5️⃣ Commit
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Failed to update user—possible duplicate data")
 
-    await db.commit()
-
-
+    # 6️⃣ Return the updated payload
     return {
-        "id":        user.id,               
-        "full_name": detail.full_name,
-        "email":     detail.email,
-        "role":      role.name,
-        "status":    detail.status,
+        "id":               user.id,
+        "full_name":        detail.full_name,
+        "email":            detail.email,  # unchanged
+        "role":             role.name,
+        "status":           detail.status,
         "is_temp_password": user.is_temp_password
     }
-
 
 async def login_user(db: AsyncSession, username: str, password: str):
     q = await db.execute(

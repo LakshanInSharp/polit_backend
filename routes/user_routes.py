@@ -78,20 +78,26 @@ async def list_users(db: AsyncSession = Depends(user_service.get_db)):
     ]
 
 
-@user_router.put( "/admin/users/{user_id}",
+@user_router.put(
+    "/admin/users/{user_id}",
     response_model=UserListItem,
-    summary="Edit an existing user (full_name, email, role, status)"
+    summary="Edit an existing user (full_name, email is immutable, role, status)"
 )
 async def edit_user(
     user_id: int,
     data: AddUser,
     db: AsyncSession = Depends(user_service.get_db),
 ):
-    updated = await user_service.update_user(db, user_id, data, modified_by=1)
-    if not updated:
-        raise HTTPException(404, "User not found")
-    return updated
+    try:
+        updated = await user_service.update_user(db, user_id, data, modified_by=1)
+    except ValueError as ve:
+        # This catches any role‐not‐found or integrity errors
+        raise HTTPException(status_code=400, detail=str(ve))
 
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return updated
 
 @user_router.get("/me", response_model=UserListItem)
 async def read_current_user(current_user: UserListItem = Depends(user_service.get_current_user)):
