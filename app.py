@@ -22,14 +22,14 @@ Base.metadata.create_all(bind=sync_engine)
 # Lifespan context for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- Sync DB session to initialize roles ---
+    # Sync DB session to initialize roles 
     db = SessionLocal()
     try:
         initialize_roles(db)  # <-- call your external function here
     finally:
         db.close()
     
-    # --- Async DB session to create initial admin ---
+    # Async DB session to create initial admin 
     async with AsyncSessionLocal() as async_db:
         await create_initial_admin_if_needed(async_db)
 

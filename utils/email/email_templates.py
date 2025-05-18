@@ -8,6 +8,20 @@ Temporary password: {temp_password}
 Please log in and change your password.
 """
 
+# Subject and body template for password reset email
+PASSWORD_RESET_SUBJECT = "[Polit] Password Reset Request"
+PASSWORD_RESET_BODY = """Hello,
+
+We received a request to reset your password. Click the link below to set a new password:
+
+{reset_url}
+
+If you didn’t request this, you can ignore this email.
+
+— Polit App Team
+"""
+
+
 # Subject and body template for notifying user about email update
 EMAIL_UPDATED_SUBJECT = "Your Email has been Successfully Updated"
 EMAIL_UPDATED_BODY = """Dear {full_name},

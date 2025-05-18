@@ -8,6 +8,7 @@ from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user_model import PasswordResetToken,  Session, User
+from utils.email import email_templates
 from schemas.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -177,17 +178,9 @@ async def forgot_password(
     background_tasks.add_task(
         send_email,
         payload.email,
-        "[Polit] Password Reset Request",
-        (
-            f"Hello,\n\n"
-            "We received a request to reset your password. "
-            "Click the link below to set a new password:\n\n"
-            f"{reset_url}\n\n"
-            "If you didn’t request this, you can ignore this email.\n\n"
-            "— Polit App Team"
-        ),
+        email_templates.PASSWORD_RESET_SUBJECT,
+        email_templates.PASSWORD_RESET_BODY.format(reset_url=reset_url),
     )
-
     return {"message": "Password reset email sent"}
 
 
@@ -221,7 +214,9 @@ async def reset_password(
 
     if not reset_rec:
         raise HTTPException(400, "Invalid reset token")
-    if reset_rec.expiration < utc_now:
+    
+    reset_exp = reset_rec.expiration.replace(tzinfo=timezone.utc)  
+    if reset_exp < utc_now:
         await db.delete(reset_rec)
         await db.commit()
         raise HTTPException(400, "Reset token has expired")

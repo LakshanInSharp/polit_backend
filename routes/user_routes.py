@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user_model import Role, User, UserDetail
-from utils.email.email_utils import send_email
 from utils.email import email_templates
 from schemas.schemas import AddUser, UserListItem
 from service import user_service
@@ -178,11 +177,11 @@ async def edit_user(
             user_service.safe_send_email,
             to=old_email,
             subject=email_templates.EMAIL_UPDATED_SUBJECT,
-            body=(
-                f"Hello {updated['full_name']},\n\n"
-                f"Your account email has been changed to {data.email}.\n"
-                "If you did not make this change, please contact support immediately."
+            body=email_templates.EMAIL_UPDATED_BODY.format(
+            full_name=updated['full_name'],
+            new_email=data.email
             )
+
         )
 
     if temp_password:
@@ -190,12 +189,11 @@ async def edit_user(
             user_service.safe_send_email,
             to=data.email,
             subject=email_templates.TEMP_PASSWORD_SUBJECT,
-            body=(
-                f"Hello {updated['full_name']},\n\n"
-                f"Your temporary password has been reset.\n"
-                f"Temporary password: {temp_password}\n"
-                "Please change it after login."
+            body=email_templates.TEMP_PASSWORD_BODY.format(
+            full_name=updated['full_name'],
+            temp_password=temp_password
             )
+
         )
 
     if not updated["status"]:
@@ -203,10 +201,10 @@ async def edit_user(
             user_service.safe_send_email,
             to=data.email,
             subject=email_templates.ACCOUNT_DEACTIVATED_SUBJECT,
-            body=(
-                f"Hello {updated['full_name']},\n\n"
-                "Your account has been deactivated. Please contact support if this is unexpected."
-            )
+            body=email_templates.ACCOUNT_DEACTIVATED_BODY.format(
+            full_name=updated['full_name']
+             )
+
         )
 
     return UserListItem(**updated)
