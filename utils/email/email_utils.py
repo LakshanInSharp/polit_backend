@@ -5,7 +5,7 @@ from email.message import EmailMessage
 import aiosmtplib
 from dotenv import load_dotenv
 
-load_dotenv()  # read .env
+load_dotenv()  
 SMTP_HOST = os.getenv("SMTP_HOST")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER")
@@ -17,7 +17,7 @@ if not all([SMTP_HOST, SMTP_USER, SMTP_PASS]):
         "Missing SMTP config: set SMTP_HOST, SMTP_USER and SMTP_PASS in .env"
     )
 
-# 3) Set up logging
+
 logger = logging.getLogger("email_utils")
 logging.basicConfig(level=logging.DEBUG)
 
@@ -33,7 +33,6 @@ async def send_email(to: str, subject: str, body: str) -> None:
 
     try:
         logger.debug(f"Connecting to SMTP {SMTP_HOST}:{SMTP_PORT} as {SMTP_USER}")
-        # NOTE: `msg` must be passed positionally as the first argument
         await aiosmtplib.send(
             msg,
             hostname=SMTP_HOST,

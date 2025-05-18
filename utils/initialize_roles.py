@@ -1,6 +1,5 @@
-# utils/initialize_roles.py
 from sqlalchemy.orm import Session
-from models import Role  # adjust import according to your structure
+from models.user_model import Role  
 
 def initialize_roles(db: Session):
     default_roles = ["admin", "system_admin", "user"]

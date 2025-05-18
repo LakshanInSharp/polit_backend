@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 from database.db import Base
@@ -19,6 +20,8 @@ class User(Base):
     modified_by   = Column(Integer, nullable=True)
     modified_date = Column(DateTime, onupdate=func.now())
     is_temp_password = Column(Boolean, default=True)
+    
+   
 
 
     role     = relationship("Role")
@@ -31,7 +34,7 @@ class UserDetail(Base):
     __tablename__ = "user_detail"
     user_detail_id        = Column(Integer, primary_key=True)
     user_id   = Column(Integer, ForeignKey("user.id"))
-    email     = Column(String, nullable=False, unique=True)  # Ensure email is unique
+    email     = Column(String, nullable=False, unique=True) 
     full_name = Column(String, nullable=False)
     status    = Column(Boolean, default=True)
 
@@ -40,8 +43,8 @@ class Session(Base):
     session_id           = Column(Integer, primary_key=True)
     user_id      = Column(Integer, ForeignKey("user.id"), index=True)
     session_uuid = Column(String, nullable=False)
-    start_time   = Column(DateTime, server_default=func.now())
-    end_time     = Column(DateTime, nullable=True)
+    start_time   = Column(DateTime(timezone=True), server_default=func.now())
+    end_time     = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="sessions")
 
@@ -55,3 +58,9 @@ class PasswordResetToken(Base):
     expiration = Column(DateTime, nullable=False)
 
     user = relationship("User", back_populates="reset_tokens")
+
+    
+    
+    
+    
+

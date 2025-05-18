@@ -1,36 +1,46 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import uvicorn
-from database.db import Base, SessionLocal, sync_engine, AsyncSessionLocal  # Corrected async session import
-from models.user_model import Role
+
+from database.db import Base, SessionLocal, sync_engine, AsyncSessionLocal
+from utils.initialize_roles import initialize_roles
 from routes.auth_routes import auth_router
 from routes.user_routes import user_router
 from service import user_service
-from service.user_service import create_initial_admin_if_needed  # Import from user_service
+from service.user_service import create_initial_admin_if_needed
+from utils.scheduler import scheduler
 
-# Create all tables (synchronously)
-Base.metadata.create_all(bind=sync_engine)
 
-# Insert default roles if not exist
-def initialize_roles():
-    db = SessionLocal()
-    try:
-        default_roles = ["admin", "system_admin", "user"]
-        for role_name in default_roles:
-            if not db.query(Role).filter_by(name=role_name).first():
-                db.add(Role(name=role_name))
-        db.commit()
-    finally:
-        db.close()
-
-initialize_roles()
-
-# Instantiate FastAPI app
-app = FastAPI()
+# Load env
 load_dotenv()
 
-# Enable CORS for your frontend (React, etc.)
+# Create tables synchronously
+Base.metadata.create_all(bind=sync_engine)
+
+# Lifespan context for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Sync DB session to initialize roles ---
+    db = SessionLocal()
+    try:
+        initialize_roles(db)  # <-- call your external function here
+    finally:
+        db.close()
+    
+    # --- Async DB session to create initial admin ---
+    async with AsyncSessionLocal() as async_db:
+        await create_initial_admin_if_needed(async_db)
+
+    scheduler.start()
+    yield  # Application runs here
+    scheduler.shutdown(wait=False)
+
+# FastAPI instance with lifespan
+app = FastAPI(lifespan=lifespan)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -39,18 +49,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include your application routes
-app.include_router(user_router,dependencies=[Depends(user_service.get_current_user)])
+# Routers
+app.include_router(user_router, dependencies=[Depends(user_service.get_current_user)])
 app.include_router(auth_router)
 
-
-# Run async startup logic
-@app.on_event("startup")
-async def startup_event():
-    # Get a database session using the async session factory
-    async with AsyncSessionLocal() as db:
-        await create_initial_admin_if_needed(db)  # Pass db to the function
-
-# Run with Uvicorn if executed directly
+# Run app
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=7000, reload=True)
