@@ -58,7 +58,7 @@ async def get_current_user(
     if not sess:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-    # --- EXPIRATION CHECK: session older than 5 days ---
+    # EXPIRATION CHECK: session older than 5 days 
     now = datetime.now(timezone.utc)
     session_age = now - sess.start_time
     if session_age > timedelta(days=5):
