@@ -1,27 +1,61 @@
-from fastapi import  FastAPI, Request
+from dotenv import load_dotenv
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from routes.user_routes import router as user_router
+from contextlib import asynccontextmanager
 import uvicorn
 
-app = FastAPI()
+from database.db import Base, SessionLocal, sync_engine, AsyncSessionLocal
+from utils.initialize_roles import initialize_roles
+from routes.auth_routes import auth_router
+from routes.user_routes import user_router
+from routes.dashboard_routes import dashboard_router
+from service import user_service
+from service.user_service import create_initial_admin_if_needed
+from utils.scheduler import scheduler
 
 
-# allow frontend to access backend
+# Load env
+load_dotenv()
+
+# Create tables synchronously
+Base.metadata.create_all(bind=sync_engine)
+
+# Lifespan context for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Sync DB session to initialize roles 
+    db = SessionLocal()
+    try:
+        initialize_roles(db)  # <-- call your external function here
+    finally:
+        db.close()
+    
+    # Async DB session to create initial admin 
+    async with AsyncSessionLocal() as async_db:
+        await create_initial_admin_if_needed(async_db)
+
+    scheduler.start()
+    yield  # Application runs here
+    scheduler.shutdown(wait=False)
+
+# FastAPI instance with lifespan
+app = FastAPI(lifespan=lifespan)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"], 
-
-
+    allow_headers=["*"],
 )
 
-app.add_middleware(SessionMiddleware, secret_key="my_dev_secret_123",same_site="Lax",max_age=60*60 )
+# Routers
+app.include_router(user_router, dependencies=[Depends(user_service.get_current_user)])
+app.include_router(auth_router)
+app.include_router(dashboard_router)
 
-app.include_router(user_router, prefix="/api/users")
 
+# Run app
 if __name__ == "__main__":
-   
-    uvicorn.run(app, host="0.0.0.0", port=7000)
+    uvicorn.run("app:app", host="0.0.0.0", port=7000, reload=True)
