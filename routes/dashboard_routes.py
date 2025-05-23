@@ -52,3 +52,5 @@ async def active_users(
     db: AsyncSession = Depends(get_db)
 ):
     return await get_active_users_by_period(db, granularity)
+
+

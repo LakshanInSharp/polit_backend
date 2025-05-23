@@ -22,3 +22,10 @@ SessionLocal = sessionmaker(bind=sync_engine, class_=Session, expire_on_commit=F
 
 # Declare the base class for ORM models
 Base = declarative_base()
+
+
+
+
+
+
+
