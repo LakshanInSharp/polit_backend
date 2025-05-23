@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+import pytz
 from sqlalchemy import and_, distinct, extract, func, or_, select
 from models.user_model import Role, Session, User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ async def get_sessions(db, year, month):
     )
     return result.scalars().all()
 
+
 def compute_avg_duration(sessions):
     if not sessions:
         return 0
@@ -23,27 +25,33 @@ def compute_avg_duration(sessions):
 
 
 
-
 async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily"):
-    now = datetime.now(timezone.utc)
+    colombo_tz = pytz.timezone("Asia/Colombo")
+    now = datetime.now(colombo_tz)
     today = now.date()
     results = []
 
     if granularity == "daily":
-        # Hourly breakdown for today
+        # Hourly breakdown for today (in local time, converted to UTC)
         for hour in range(24):
-            hour_start = datetime.combine(today, datetime.min.time()).replace(hour=hour)
-            hour_end = hour_start + timedelta(hours=1)
+            local_hour_start = colombo_tz.localize(datetime.combine(today, time(hour, 0)))
+            local_hour_end = local_hour_start + timedelta(hours=1)
+
+            hour_start = local_hour_start.astimezone(timezone.utc)
+            hour_end = local_hour_end.astimezone(timezone.utc)
 
             stmt = (
-                select(func.count(distinct(Session.user_id)))
+                select(func.count(func.distinct(Session.user_id)))
+                .select_from(Session)
+                .join(User, User.id == Session.user_id)
                 .where(
                     and_(
                         Session.start_time < hour_end,
                         or_(
                             Session.end_time == None,
                             Session.end_time >= hour_start
-                        )
+                        ),
+                        User.role_id == 3
                     )
                 )
             )
@@ -51,62 +59,74 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
             res = await db.execute(stmt)
             count = res.scalar_one()
             results.append({
-                "day": hour_start.strftime("%H:%M"),  # e.g., "14:00"
+                "period": local_hour_start.strftime("%H:%M"),  # Show in local time
                 "active_users": count
             })
 
     elif granularity == "weekly":
-        # Each day of the last 7 days
+        # Each day of the last 7 days (in local time)
         for i in range(6, -1, -1):
             day = today - timedelta(days=i)
-            day_start = datetime.combine(day, datetime.min.time())
-            day_end = day_start + timedelta(days=1)
+            local_day_start = colombo_tz.localize(datetime.combine(day, time(0, 0)))
+            local_day_end = local_day_start + timedelta(days=1)
+
+            day_start = local_day_start.astimezone(timezone.utc)
+            day_end = local_day_end.astimezone(timezone.utc)
 
             stmt = (
-                select(func.count(distinct(Session.user_id)))
+                select(func.count(func.distinct(Session.user_id)))
+                .select_from(Session)
+                .join(User, User.id == Session.user_id)
                 .where(
                     and_(
                         Session.start_time < day_end,
                         or_(
                             Session.end_time == None,
                             Session.end_time >= day_start
-                        )
+                        ),
+                        User.role_id == 3
                     )
                 )
             )
             res = await db.execute(stmt)
             count = res.scalar_one()
             results.append({
-                "day": day.strftime("%b %d"),  # e.g., "May 14"
+                "period": day.strftime("%b %d"),
                 "active_users": count
             })
 
     elif granularity == "monthly":
-        # All days from the beginning of the month until today
+        # All days from the beginning of the month until today (local time)
         first_day_of_month = today.replace(day=1)
         num_days = (today - first_day_of_month).days + 1
 
         for i in range(num_days):
             day = first_day_of_month + timedelta(days=i)
-            day_start = datetime.combine(day, datetime.min.time())
-            day_end = day_start + timedelta(days=1)
+            local_day_start = colombo_tz.localize(datetime.combine(day, time(0, 0)))
+            local_day_end = local_day_start + timedelta(days=1)
+
+            day_start = local_day_start.astimezone(timezone.utc)
+            day_end = local_day_end.astimezone(timezone.utc)
 
             stmt = (
-                select(func.count(distinct(Session.user_id)))
+                select(func.count(func.distinct(Session.user_id)))
+                .select_from(Session)
+                .join(User, User.id == Session.user_id)
                 .where(
                     and_(
                         Session.start_time < day_end,
                         or_(
                             Session.end_time == None,
                             Session.end_time >= day_start
-                        )
+                        ),
+                        User.role_id == 3
                     )
                 )
             )
             res = await db.execute(stmt)
             count = res.scalar_one()
             results.append({
-                "day": day.strftime("%b %d"),  # e.g., "May 01"
+                "period": day.strftime("%b %d"),
                 "active_users": count
             })
 
