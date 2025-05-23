@@ -1,8 +1,9 @@
-
-
 import os
 from uuid import uuid4
+from dotenv import load_dotenv
 
+load_dotenv()
+FILE_PATH = os.getenv("FILE_PATH")
 
 class DocumentHandler:
     def __init__(self):
@@ -24,7 +25,7 @@ class DocumentHandler:
 
 
         # Define permanent storage path
-        storage_dir = os.path.join(r"D:\INSHARP PROJECTS\POLIT\Polit_AI_Backend\static", "pdfs")  # or use full path: /app/static/pdfs
+        storage_dir = os.path.join(FILE_PATH, "pdfs")  # or use full path: /app/static/pdfs
         os.makedirs(storage_dir, exist_ok=True)
         file_path = os.path.join(storage_dir, safe_file_name)
 

@@ -9,6 +9,7 @@ from utils.initialize_roles import initialize_roles
 from routes.auth_routes import auth_router
 from routes.user_routes import user_router
 from routes.file_upload_route import upload_router
+from routes.dashboard_routes import dashboard_router
 from service import user_service
 from service.user_service import create_initial_admin_if_needed
 from utils.scheduler import scheduler
@@ -66,17 +67,20 @@ app = FastAPI(lifespan=lifespan)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+
 # Routers
 app.include_router(user_router, dependencies=[Depends(user_service.get_current_user)])
 app.include_router(upload_router)
-
 app.include_router(auth_router)
+app.include_router(dashboard_router)
+
 
 # Run app
 if __name__ == "__main__":
