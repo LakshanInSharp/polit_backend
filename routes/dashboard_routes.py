@@ -1,7 +1,11 @@
 import calendar
+from typing import List
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
+from schemas.domaingaps_schema import DomainGap
+from schemas.querycount_schema import QueryCount
 from service.user_service import get_db
 from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_sessions
 
@@ -52,5 +56,42 @@ async def active_users(
     db: AsyncSession = Depends(get_db)
 ):
     return await get_active_users_by_period(db, granularity)
+
+
+
+@dashboard_router.get("/top-queries", response_model=List[QueryCount])
+async def get_top_queries(db: AsyncSession = Depends(get_db)):
+    query = text("SELECT source, page_no, main_topic, count FROM ref_count2 ORDER BY count DESC")
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    return [
+        QueryCount(
+            source=row[0],
+            page_no=row[1],
+            main_topic=row[2],
+            count=row[3]
+        ) for row in rows
+    ]
+
+
+
+@dashboard_router.get("/gap-in-queries", response_model=List[DomainGap])
+async def get_gap_queries(db: AsyncSession = Depends(get_db)):
+    query = text("""
+        SELECT main_topic, SUM(count) AS total_count 
+        FROM gap_in_document_count
+        GROUP BY main_topic 
+        ORDER BY total_count DESC
+    """)
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    return [
+        DomainGap(
+            main_topic=row[0],
+            count=row[1]
+        ) for row in rows
+    ]
 
 
