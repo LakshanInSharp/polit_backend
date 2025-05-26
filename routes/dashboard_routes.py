@@ -62,36 +62,13 @@ async def active_users(
     return await get_active_users_by_period(db, granularity)
 
 
-<<<<<<< HEAD
-@dashboard_router.get("/most_referenced_file", response_model=List[FileCount])
-async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text(" SELECT source, COUNT(*) AS total_count FROM top_queries GROUP BY source ORDER BY total_count DESC")
-    result = await db.execute(query)
-    rows = result.fetchall()
-    print(rows[0])
-    return [
-        FileCount(
-            source=row[0],
-            count=row[1],
-       
-        ) for row in rows
-    ]
-
 
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, page_no,topic, count FROM top_queries ORDER BY count DESC")
-    result = await db.execute(query)
-    rows = result.fetchall()
-=======
-
-@dashboard_router.get("/top-queries", response_model=List[QueryCount])
-async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, page_no, main_topic, count FROM ref_count2 ORDER BY count DESC")
+    query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
     rows = result.fetchall()
 
->>>>>>> 9fa3d02276a4a25fbe19e31d81cde25f372e5976
     return [
         QueryCount(
             source=row[0],
@@ -101,8 +78,6 @@ async def get_top_queries(db: AsyncSession = Depends(get_db)):
         ) for row in rows
     ]
 
-<<<<<<< HEAD
-=======
 
 
 @dashboard_router.get("/gap-in-queries", response_model=List[DomainGap])
@@ -123,5 +98,17 @@ async def get_gap_queries(db: AsyncSession = Depends(get_db)):
         ) for row in rows
     ]
 
-
->>>>>>> 9fa3d02276a4a25fbe19e31d81cde25f372e5976
+@dashboard_router.get("/most_referenced_file", response_model=List[FileCount])
+async def get_top_queries(db: AsyncSession = Depends(get_db)):
+   # query = text(" SELECT source, COUNT(*) AS total_count FROM top_queries GROUP BY source ORDER BY total_count DESC")
+    query=text("SELECT LOWER(TRIM(source)) AS  source,SUM(count) As total_count FROM top_queries GROUP By LOWER(TRIM(source)) ORDER BY total_count DESC")
+    result = await db.execute(query)
+    rows = result.fetchall()
+    print(rows[0])
+    return [
+        FileCount(
+            source=row[0],
+            count=row[1],
+       
+        ) for row in rows
+    ]

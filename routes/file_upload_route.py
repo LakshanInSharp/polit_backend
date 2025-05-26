@@ -1,11 +1,17 @@
+from dotenv import load_dotenv
 from fastapi import UploadFile, File, HTTPException, APIRouter
 import logging
 import io
-from service.Document_handler import DocumentHandler
+from service.Document_handler import FileUploader
 import httpx
+import os
+
+
+load_dotenv()
+AI_BACKEND_FILE_UPLOADER_URL = os.getenv("AI_BACKEND_FILE_UPLOADER_URL")
 
 upload_router = APIRouter()
-Document_Handler = DocumentHandler()
+Document_Handler = FileUploader()
 
 
 @upload_router.post("/upload-pdf")
@@ -23,31 +29,41 @@ async def upload_pdf(file: UploadFile = File(...)):
         logger.debug("Reading file into memory")
         file_bytes = await file.read()
         file_stream = io.BytesIO(file_bytes)
+        file_name = file.filename
+        filetype=file.content_type
 
-        file_size = len(file_bytes)
-        print(f"File stream size: {file_size} bytes")
-        logger.info(f"File size: {file_size} bytes")
+
+      
 
         # Save file locally
-        file_path = Document_Handler.save_file_to_local_storage(file_stream, file.filename)
-        logger.info(f"Saved file to local path: {file_path}")
+        # file_path = Document_Handler.save_file_to_local_storage(file_stream, file.filename)
+        # logger.info(f"Saved file to local path: {file_path}")
+        
+        # Upload file to S3 and save metadata to PostgreSQL
+        logger.debug("File Uploading to s3 bucket")
+        file_url= Document_Handler.upload_file_to_s3(file_stream, file_name,filetype)
+        logger.info(f"File uploaded to S3: {file_url}")
 
 
-       # Asynchronously notify AI backend
+
+      # Asynchronously notify AI backend
         try:
-            ai_backend_url = "http://localhost:8000/api/process-pdf"  # Change to actual AI backend URL and port
+            ai_backend_url = AI_BACKEND_FILE_UPLOADER_URL      
             async with httpx.AsyncClient() as client:
-                response = await client.post(ai_backend_url, json={"file_path": file_path})
+                response = await client.post(ai_backend_url, json={"file_path": file_url})
                 logger.info(f"AI backend response: {response.status_code} - {response.text}")
+
+
         except Exception as ai_error:
             logger.error(f"Failed to notify AI backend: {str(ai_error)}")
             # You might choose to still return success even if AI backend fails, or raise error.
 
+
         # Return response to client
         return {
-            "message": "Successfully uploaded to PostgreSQL and sent to AI backend",
-            
+            "message": "Successfully uploaded to PostgreSQL and sent to AI backend",        
         }
+
 
     except Exception as e:
         logger.error(f"Error during PDF upload: {str(e)}")
