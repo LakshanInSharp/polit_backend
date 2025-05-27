@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
@@ -73,10 +73,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Routers
 app.include_router(user_router, dependencies=[Depends(user_service.get_current_user)])
 app.include_router(upload_router)
-
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 

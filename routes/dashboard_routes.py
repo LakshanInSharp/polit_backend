@@ -1,6 +1,8 @@
+import asyncio
 import calendar
+import json
 from typing import List
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
@@ -8,6 +10,10 @@ from schemas.domaingaps_schema import DomainGap
 from schemas.querycount_schema import QueryCount
 from service.user_service import get_db
 from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_sessions
+from schemas.querycount_model import QueryCount,FileCount
+from utils.websocket_manager import manager 
+
+
 
 dashboard_router = APIRouter()
 
@@ -50,6 +56,7 @@ async def get_average_session_length(db: AsyncSession = Depends(get_db)):
     }
 
 
+
 @dashboard_router.get("/active-users")
 async def active_users(
     granularity: str = Query("daily", enum=["daily", "weekly", "monthly"]),
@@ -61,7 +68,7 @@ async def active_users(
 
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, page_no, main_topic, count FROM ref_count2 ORDER BY count DESC")
+    query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
     rows = result.fetchall()
 
@@ -93,5 +100,53 @@ async def get_gap_queries(db: AsyncSession = Depends(get_db)):
             count=row[1]
         ) for row in rows
     ]
+
+@dashboard_router.get("/most_referenced_file", response_model=List[FileCount])
+async def get_top_queries(db: AsyncSession = Depends(get_db)):
+   # query = text(" SELECT source, COUNT(*) AS total_count FROM top_queries GROUP BY source ORDER BY total_count DESC")
+    query=text("SELECT LOWER(TRIM(source)) AS  source,SUM(count) As total_count FROM top_queries GROUP By LOWER(TRIM(source)) ORDER BY total_count DESC")
+    result = await db.execute(query)
+    rows = result.fetchall()
+    print(rows[0])
+    return [
+        FileCount(
+            source=row[0],
+            count=row[1],
+       
+        ) for row in rows
+    ]
+
+
+@dashboard_router.websocket("/ws/dashboard")
+async def websocket_dashboard(websocket: WebSocket, db: AsyncSession = Depends(get_db)):
+    await manager.connect(websocket)
+    try:
+        while True:
+            message = await websocket.receive_text()
+            print(f"[WS] Received message: {message}")  # Debug
+
+            if message == "get_updates":
+                avg_sessions = await get_average_session_length(db)
+                print(f"[WS] Raw avg_sessions: {avg_sessions}")  # Debug
+
+                # Only include the expected keys
+                filtered_avg_sessions = {
+                    "formatted": avg_sessions.get("formatted"),
+                    "percentage_change_vs_last_month": avg_sessions.get("percentage_change_vs_last_month")
+                }
+
+                active_users_data = await get_active_users_by_period(db, granularity="daily")
+
+                payload = {
+                    "type": "dashboard_update",
+                    "avg_session_length": filtered_avg_sessions,
+                    "active_users": active_users_data,
+                }
+
+                print(f"[WS] Sending payload: {payload}")  # Debug
+                await websocket.send_text(json.dumps(payload))
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        print("[WS] Disconnected")  # Debug
 
 

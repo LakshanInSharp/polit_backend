@@ -55,6 +55,7 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
                     )
                 )
             )
+            
             res = await db.execute(stmt)
             count = res.scalar_one()
             results.append({
