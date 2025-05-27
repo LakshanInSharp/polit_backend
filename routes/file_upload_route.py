@@ -3,14 +3,15 @@ from dotenv import load_dotenv
 from fastapi import Depends, UploadFile, File, HTTPException, APIRouter
 import logging
 import io
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
-from service import user_service
+
+from sqlalchemy import text
 from schemas.resources_schema import Resource
-from service.Document_handler import FileUploader, format_size
+from service import user_service
+from service.Document_handler import FileUploader
 import httpx
 import os
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from utils.format_file_size import format_size
 
 load_dotenv()
 AI_BACKEND_FILE_UPLOADER_URL = os.getenv("AI_BACKEND_FILE_UPLOADER_URL")
@@ -76,7 +77,6 @@ async def upload_pdf(file: UploadFile = File(...)):
     
 
 
-
 @upload_router.get("/get-resources", response_model=List[Resource])
 async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> List[Resource]:
     raw_sql = text("""
@@ -84,10 +84,8 @@ async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> Lis
         FROM file_uploads
         ORDER BY uploaded_at DESC
     """)
-
     result = await db.execute(raw_sql)
     rows = result.mappings().all()
-
     resources = [
         Resource(
             id=row["id"],
@@ -98,5 +96,4 @@ async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> Lis
         )
         for row in rows
     ]
-
     return resources
