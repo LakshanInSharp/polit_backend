@@ -4,15 +4,18 @@ from uuid import uuid4
 from datetime import datetime
 from typing import Optional
 from io import BytesIO
-
 import boto3
 import psycopg2
 from psycopg2 import pool
 from fastapi import UploadFile
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+from dotenv import load_dotenv
+load_dotenv() 
 
 
 #local file path for temporary storage
@@ -92,7 +95,9 @@ class FileUploader:
         logger.debug(f"Validating file size for {filename}")
         contents=file_stream
         contents.seek(0, os.SEEK_END)
+
         file_size = contents.tell()
+        file_size_mb = file_size / (1024 * 1024)  # Convert to MB
         contents.seek(0)
         if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
             raise ValueError(f"File size exceeds {MAX_FILE_SIZE_MB}MB limit")
@@ -142,7 +147,7 @@ class FileUploader:
                     unique_file_name,
                     file_url,
                     filetype,
-                    file_size,
+                    file_size_mb,
                     datetime.utcnow()
                 ))
                 conn.commit()
@@ -178,3 +183,13 @@ class FileUploader:
             f.write(file_stream.read())
 
         return file_path
+    
+
+    # Utility function to format file size (optional)
+    def format_size(size: int) -> str:
+        """Convert bytes to a human-readable format (KB, MB, GB)."""
+        for unit in ['bytes', 'KB', 'MB', 'GB']:
+            if size < 1024.0:
+                return f"{size:.2f} {unit}"
+            size /= 1024.0
+        return f"{size:.2f} TB"  # In case of larger sizes

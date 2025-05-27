@@ -1,11 +1,17 @@
+from typing import List
 from dotenv import load_dotenv
-from fastapi import UploadFile, File, HTTPException, APIRouter
+from fastapi import Depends, UploadFile, File, HTTPException, APIRouter
 import logging
 import io
+
+from sqlalchemy import text
+from schemas.resources_schema import Resource
+from service import user_service
 from service.Document_handler import FileUploader
 import httpx
 import os
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from utils.format_file_size import format_size
 
 load_dotenv()
 AI_BACKEND_FILE_UPLOADER_URL = os.getenv("AI_BACKEND_FILE_UPLOADER_URL")
@@ -68,3 +74,26 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error during PDF upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@upload_router.get("/get-resources", response_model=List[Resource])
+async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> List[Resource]:
+    raw_sql = text("""
+        SELECT id, file_name, file_type, file_size, uploaded_at
+        FROM file_uploads
+        ORDER BY uploaded_at DESC
+    """)
+    result = await db.execute(raw_sql)
+    rows = result.mappings().all()
+    resources = [
+        Resource(
+            id=row["id"],
+            file_name=row["file_name"],
+            file_type=row["file_type"],
+            file_size=format_size(row["file_size"]),
+            uploaded_at=row["uploaded_at"],
+        )
+        for row in rows
+    ]
+    return resources
