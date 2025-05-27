@@ -7,10 +7,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from schemas.domaingaps_schema import DomainGap
-from schemas.querycount_schema import QueryCount
 from service.user_service import get_db
 from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_sessions
-from schemas.querycount_model import QueryCount,FileCount
+from schemas.querycounts_schema import QueryCount,FileCount
 from utils.websocket_manager import manager 
 
 

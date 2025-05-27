@@ -17,7 +17,7 @@ from asyncpg import UniqueViolationError
 from database.db import AsyncSessionLocal
 from models import user_model
 from models.user_model import Role, User, UserDetail, Session
-from schemas.schemas import AddUser, UserListItem
+from schemas.user_schema import AddUser, UserListItem
 from utils.email.email_utils import send_email
 
 

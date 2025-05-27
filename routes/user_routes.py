@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user_model import Role, User, UserDetail
 from utils.email import email_templates
-from schemas.schemas import AddUser, UserListItem
+from schemas.user_schema import AddUser, UserListItem
 from service import user_service
 
 
