@@ -8,6 +8,9 @@ from schemas.domaingaps_schema import DomainGap
 from schemas.querycount_schema import QueryCount
 from service.user_service import get_db
 from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_sessions
+from schemas.querycount_model import QueryCount,FileCount
+
+
 
 dashboard_router = APIRouter()
 
@@ -50,6 +53,7 @@ async def get_average_session_length(db: AsyncSession = Depends(get_db)):
     }
 
 
+
 @dashboard_router.get("/active-users")
 async def active_users(
     granularity: str = Query("daily", enum=["daily", "weekly", "monthly"]),
@@ -58,13 +62,26 @@ async def active_users(
     return await get_active_users_by_period(db, granularity)
 
 
+@dashboard_router.get("/most_referenced_file", response_model=List[FileCount])
+async def get_top_queries(db: AsyncSession = Depends(get_db)):
+    query = text(" SELECT source, COUNT(*) AS total_count FROM top_queries GROUP BY source ORDER BY total_count DESC")
+    result = await db.execute(query)
+    rows = result.fetchall()
+    print(rows[0])
+    return [
+        FileCount(
+            source=row[0],
+            count=row[1],
+       
+        ) for row in rows
+    ]
+
 
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, page_no, main_topic, count FROM ref_count2 ORDER BY count DESC")
+    query = text("SELECT source, page_no,topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
     rows = result.fetchall()
-
     return [
         QueryCount(
             source=row[0],
@@ -73,25 +90,4 @@ async def get_top_queries(db: AsyncSession = Depends(get_db)):
             count=row[3]
         ) for row in rows
     ]
-
-
-
-@dashboard_router.get("/gap-in-queries", response_model=List[DomainGap])
-async def get_gap_queries(db: AsyncSession = Depends(get_db)):
-    query = text("""
-        SELECT main_topic, SUM(count) AS total_count 
-        FROM gap_in_document_count
-        GROUP BY main_topic 
-        ORDER BY total_count DESC
-    """)
-    result = await db.execute(query)
-    rows = result.fetchall()
-
-    return [
-        DomainGap(
-            main_topic=row[0],
-            count=row[1]
-        ) for row in rows
-    ]
-
 
