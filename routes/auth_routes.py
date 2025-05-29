@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user_model import PasswordResetToken,  Session, User
 from utils.email import email_templates
-from schemas.schemas import (
+from schemas.user_schema import (
     ForgotPasswordRequest,
     LoginRequest,
     ChangePasswordRequest,

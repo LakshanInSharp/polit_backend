@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user_model import Role, User, UserDetail
 from utils.email import email_templates
-from schemas.schemas import AddUser, UserListItem
+from schemas.user_schema import AddUser, UserListItem
 from service import user_service
 
 
@@ -49,12 +49,11 @@ async def add_user(
         user_service.safe_send_email,
         to=data.email,
         subject=email_templates.WELCOME_SUBJECT,
-        body=(
-            f"Welcome {data.full_name}!\n\n"
-            f"Your account has been created with the email: {data.email}\n"
-            f"Your temporary password is: {temp_password}\n\n"
-            "Please change your password after logging in."
-        ),
+        body=email_templates.WELCOME_BODY.format(
+        full_name=data.full_name,
+        email=data.email,
+        temp_password=temp_password
+)
     )
     return {"msg": f"User '{user.username}' created. Email will be sent shortly."}
 
