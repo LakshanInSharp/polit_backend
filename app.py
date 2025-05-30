@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
@@ -14,6 +14,7 @@ from service import user_service
 from service.user_service import create_initial_admin_if_needed
 from utils.scheduler import scheduler
 import logging
+from routes.dashboard_routes import dashboard_router
 
 # Load env
 load_dotenv()
@@ -72,7 +73,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 # Routers

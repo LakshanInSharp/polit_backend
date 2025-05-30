@@ -17,7 +17,7 @@ from asyncpg import UniqueViolationError
 from database.db import AsyncSessionLocal
 from models import user_model
 from models.user_model import Role, User, UserDetail, Session
-from schemas.schemas import AddUser, UserListItem
+from schemas.user_schema import AddUser, UserListItem
 from utils.email.email_utils import send_email
 
 
@@ -203,37 +203,6 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 
-async def change_password(db: AsyncSession, username: str, new_password: str):
-    """
-    Changes a user's password and resets the temp password flag.
-
-    Args:
-        db (AsyncSession): Database session.
-        username (str): User's email.
-        new_password (str): New plain text password.
-
-    Returns:
-        bool: True if successful, False otherwise.
-    """
-    
-    q = await db.execute(select(User).where(User.username == username))
-    user = q.scalar_one_or_none()
-    if not user:
-        return False
-
-    user.password_hash = hash_password(new_password)
-    user.is_temp_password = False  
-
-    await db.commit()
-
-    await send_email(
-        to=user.username,
-        subject="Password Changed",
-        body="Your password was updated."
-    )
-    return True
-
-
 
 # ================================
 # User Management
@@ -246,6 +215,8 @@ async def email_exists_for_other_user(db: AsyncSession, email: str, exclude_user
         select(User).where(User.username == email, User.id != exclude_user_id)
     )
     return result.scalar_one_or_none() is not None
+
+
 
 async def create_initial_admin_if_needed(db: AsyncSession):
     """

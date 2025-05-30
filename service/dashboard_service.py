@@ -131,3 +131,20 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
             })
 
     return results
+
+def serialize_query(q):
+    data = q.model_dump()
+    for key, value in data.items():
+        if hasattr(value, "isoformat"):
+            data[key] = value.isoformat()
+    return data
+
+def clean_query_dict(q: dict) -> dict:
+    q = q.copy()
+    # Ensure page_no is a string without curly braces or remove it if not needed
+    if 'page_no' in q:
+        # Option 1: Remove page_no entirely if not used
+        del q['page_no']
+        # Option 2: Or sanitize page_no, e.g.:
+        # q['page_no'] = str(q['page_no']).replace("{", "").replace("}", "")
+    return q

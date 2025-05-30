@@ -97,3 +97,33 @@ async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> Lis
         for row in rows
     ]
     return resources
+
+S3_FOLDER = os.getenv("S3_FOLDER", "uploads")
+
+@upload_router.delete("/delete-resource/{resource_id}")
+async def delete_resource(resource_id: int,db: AsyncSession = Depends(user_service.get_db)):
+    logger = logging.getLogger(__name__)
+    # Step 1: Check if the resource exists and fetch file_name
+    fetch_sql = text("SELECT file_name FROM file_uploads WHERE id = :id")
+    result = await db.execute(fetch_sql, {"id": resource_id})
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    logger.info(row)
+    logger.debug("get file name from database")
+    filename = row[0]  # file_name from DB
+    # Generate the full S3 key
+    logger.info("sucessffully get it")
+    
+    # Step 2: Delete from S3
+    s3_deleted = Document_Handler.delete_file_from_s3( filename)
+    if not s3_deleted:
+        raise HTTPException(status_code=500, detail="Failed to delete file from S3")
+
+    # Step 3: Delete from database
+    delete_sql = text("DELETE FROM file_uploads WHERE id = :id")
+    await db.execute(delete_sql, {"id": resource_id})
+    await db.commit()
+
+    return {"message": f"Resource with ID {resource_id} deleted successfully"}
