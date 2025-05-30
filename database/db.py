@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 # Get individual components from environment variables
 DB_USER = os.getenv("DB_USER")

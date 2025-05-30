@@ -81,16 +81,15 @@ async def active_users(
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
     logger.info("Querying top queries from 'top_queries' table")
-    query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
+    query = text("SELECT source, topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
     rows = result.fetchall()
     logger.info(f"Retrieved {len(rows)} top queries")
     return [
         QueryCount(
             source=row[0],
-            page_no=row[1],
-            main_topic=row[2],
-            count=row[3]
+            main_topic=row[1],
+            count=row[2]
         ) for row in rows
     ]
 
@@ -256,16 +255,16 @@ async def websocket_top_queries(websocket: WebSocket):
     try:
         while True:
             async with AsyncSessionLocal() as db:
-                query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
+                query = text("SELECT source, topic, count FROM top_queries ORDER BY count DESC")
                 result = await db.execute(query)
                 rows = result.fetchall()
 
             response = [
                 QueryCount(
                     source=row[0],
-                    page_no=row[1],
-                    main_topic=row[2],
-                    count=row[3]
+          
+                    main_topic=row[1],
+                    count=row[2]
                 )
                 for row in rows
             ]
