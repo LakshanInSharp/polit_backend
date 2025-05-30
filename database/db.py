@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 # Get individual components from environment variables
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -23,9 +23,11 @@ DATABASE_URL_SYNC = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{
 engine = create_async_engine(DATABASE_URL_ASYNC, echo=True, future=True)
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
+
 # Create a synchronous engine and session factory
 sync_engine = create_engine(DATABASE_URL_SYNC, echo=True)
 SessionLocal = sessionmaker(bind=sync_engine, class_=Session, expire_on_commit=False)
+
 
 # Declare the base class for ORM models
 Base = declarative_base()

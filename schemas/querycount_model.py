@@ -8,6 +8,5 @@ class FileCount(BaseModel):
 
 class QueryCount(BaseModel):
     source: str
-    page_no: str
     count: int
     main_topic:Optional[str]

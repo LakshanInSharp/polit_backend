@@ -65,16 +65,16 @@ async def active_users(
 
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
+    query = text("SELECT source, topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
     rows = result.fetchall()
 
     return [
         QueryCount(
             source=row[0],
-            page_no=row[1],
-            main_topic=row[2],
-            count=row[3]
+           
+            main_topic=row[1],
+            count=row[2]
         ) for row in rows
     ]
 
