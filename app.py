@@ -14,6 +14,7 @@ from service import user_service
 from service.user_service import create_initial_admin_if_needed
 from utils.scheduler import scheduler
 import logging
+from routes.dashboard_routes import dashboard_router
 
 # Load env
 load_dotenv()
