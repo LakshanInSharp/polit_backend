@@ -114,8 +114,6 @@ class FileUploader:
 
 
         logger.debug("file uplooading to s3 bucket")
-        
-        
         # Upload to S3
         self.s3.upload_fileobj(
             contents,
@@ -126,7 +124,6 @@ class FileUploader:
                 
             }
         )
-        
 
         logger.info("File uploaded successfully to S3")
 
@@ -186,43 +183,4 @@ class FileUploader:
             f.write(file_stream.read())
 
         return file_path
-    
-
-    # Utility function to format file size (optional)
-    def format_size(size: int) -> str:
-        """Convert bytes to a human-readable format (KB, MB, GB)."""
-        for unit in ['bytes', 'KB', 'MB', 'GB']:
-            if size < 1024.0:
-                return f"{size:.2f} {unit}"
-            size /= 1024.0
-        return f"{size:.2f} TB"  # In case of larger sizes
-    
-    
-    
-    def delete_file_from_s3(self,filename: str) -> bool:
-        """
-        Deletes a file from the S3 bucket.
-
-        Parameters:
-            filename (str): The exact filename saved in S3 (including folder path if any).
-
-        Returns:
-            bool: True if deletion was successful, False otherwise.
-        """
-        try:
-            # Compose the S3 key
-            s3_key = f"{S3_FOLDER}/{filename}"
-            logger.info(f"Attempting to delete {s3_key} from bucket {S3_BUCKET_NAME}")
-
-            # Delete the object
-            self.s3.delete_object(Bucket=S3_BUCKET_NAME, Key=s3_key)
-
-            logger.info(f"Successfully deleted {s3_key} from S3")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error deleting {filename} from S3: {e}")
-            return False
-
-
     
