@@ -80,7 +80,6 @@ async def active_users(
 
 @dashboard_router.get("/top-queries", response_model=List[QueryCount])
 async def get_top_queries(db: AsyncSession = Depends(get_db)):
-    query = text("SELECT source, topic, count FROM top_queries ORDER BY count DESC")
     logger.info("Querying top queries from 'top_queries' table")
     query = text("SELECT source, page_no, topic, count FROM top_queries ORDER BY count DESC")
     result = await db.execute(query)
@@ -275,4 +274,3 @@ async def websocket_top_queries(websocket: WebSocket):
             await asyncio.sleep(5)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-

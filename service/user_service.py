@@ -1,4 +1,5 @@
 # Standard Library
+
 import os
 import random
 import secrets
@@ -552,5 +553,3 @@ async def safe_send_email(*args, **kwargs):
     except Exception:
      
         pass
-
-

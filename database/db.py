@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 # Load environment variables from .env file
 load_dotenv(override=True)
+
 # Get individual components from environment variables
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -19,13 +20,36 @@ DATABASE_URL_ASYNC = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{D
 DATABASE_URL_SYNC = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Create an asynchronous engine and session factory
-engine = create_async_engine(DATABASE_URL_ASYNC, echo=True, future=True)
-AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+engine = create_async_engine(
+    DATABASE_URL_ASYNC,
+    future=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+)
 
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
 
 # Create a synchronous engine and session factory
-sync_engine = create_engine(DATABASE_URL_SYNC, echo=True)
-SessionLocal = sessionmaker(bind=sync_engine, class_=Session, expire_on_commit=False)
+sync_engine = create_engine(
+    DATABASE_URL_SYNC,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+)
+
+SessionLocal = sessionmaker(
+    bind=sync_engine,
+    class_=Session,
+    expire_on_commit=False
+)
+
 
 
 # Declare the base class for ORM models
