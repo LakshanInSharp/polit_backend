@@ -24,7 +24,6 @@ def compute_avg_duration(sessions):
     return sum([(s.end_time - s.start_time).total_seconds() for s in sessions]) / len(sessions)
 
 
-
 async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily"):
     colombo_tz = pytz.timezone("Asia/Colombo")
     now = datetime.now(colombo_tz)
@@ -96,12 +95,10 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
             })
 
     elif granularity == "monthly":
-        # All days from the beginning of the month until today (local time)
-        first_day_of_month = today.replace(day=1)
-        num_days = (today - first_day_of_month).days + 1
-
-        for i in range(num_days):
-            day = first_day_of_month + timedelta(days=i)
+        # Last 30 days (including today) in local time
+        start_day = today - timedelta(days=29)  # 30 days ago
+        for i in range(30):
+            day = start_day + timedelta(days=i)
             local_day_start = colombo_tz.localize(datetime.combine(day, time(0, 0)))
             local_day_end = local_day_start + timedelta(days=1)
 
@@ -126,7 +123,7 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
             res = await db.execute(stmt)
             count = res.scalar_one()
             results.append({
-                "period": day.strftime("%b %d"),
+                "period": day.strftime("%b %d"),  # e.g., 'May 04'
                 "active_users": count
             })
 
