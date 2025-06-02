@@ -273,4 +273,3 @@ async def websocket_top_queries(websocket: WebSocket):
             await asyncio.sleep(5)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-
