@@ -52,7 +52,7 @@ async def login(
         "session_uuid",
         session_uuid,
         httponly=True,
-        secure=True,
+        secure=False,  #set true for https
         samesite="Lax",
         max_age=int(timedelta(days=5).total_seconds())
     )
