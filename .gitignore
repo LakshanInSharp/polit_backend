@@ -48,7 +48,7 @@ coverage.xml
 
 # Environment variables
 .env
-.env.*
+
 *.env
 
 # Python-specific backup files
