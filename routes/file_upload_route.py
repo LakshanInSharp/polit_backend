@@ -108,7 +108,7 @@ async def list_resources(db: AsyncSession = Depends(user_service.get_db)) -> Lis
             id=row["id"],
             file_name=row["file_name"],
             file_type=row["file_type"],
-            file_size=format_size(row["file_size"]),
+            file_size=format_size(row["file_size"] * 1024 * 1024),
             uploaded_at=row["uploaded_at"],
         )
         for row in rows

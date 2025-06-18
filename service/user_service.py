@@ -7,7 +7,7 @@ import string
 from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, Cookie, status
+from fastapi import Depends, HTTPException, Cookie, WebSocket, status
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy import func, select, and_, update
 from sqlalchemy.exc import IntegrityError
@@ -95,6 +95,15 @@ async def get_current_user(
         status=st,
         is_temp_password=tp
     )
+
+
+async def get_current_user_ws(websocket: WebSocket, db: AsyncSession) -> UserListItem:
+    session_uuid = websocket.cookies.get("session_uuid") 
+    try:
+        return await get_current_user(session_uuid, db)  
+    except HTTPException as e:
+        await websocket.close(code=1008)  
+        raise e  
 
 
 async def admin_required(current_user: User = Depends(get_current_user)):

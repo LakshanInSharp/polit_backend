@@ -74,7 +74,7 @@ class FileUploader:
             file_name TEXT NOT NULL,
             file_url TEXT NOT NULL,
             file_type TEXT NOT NULL,
-            file_size BIGINT NOT NULL,
+            file_size FLOAT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -97,6 +97,7 @@ class FileUploader:
         contents.seek(0, os.SEEK_END)
 
         file_size = contents.tell()
+        print(file_size)
         file_size_mb = file_size / (1024 * 1024)  # Convert to MB
         contents.seek(0)
         if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
