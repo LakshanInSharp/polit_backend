@@ -1,4 +1,3 @@
-
 import asyncio
 import calendar
 from collections import defaultdict
@@ -77,7 +76,7 @@ async def get_average_session_length(
 async def active_users(
     granularity: str = Query("daily", enum=["daily", "weekly", "monthly"]),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user) 
+    user: User = Depends(get_current_user)
 ):
     logger.info(f"Getting active users with granularity: {granularity}")
     data = await get_active_users_by_period(db, granularity)
@@ -108,7 +107,7 @@ async def get_top_queries(
             "llm_response": row[4],
         })
 
-    grouped_response = [{"topic": topic, "queries": queries} for topic, queries in grouped_by_topic.items()]
+    grouped_response = [{"uniqueId":idx ,"topic": topic, "queries": queries} for idx,(topic, queries) in enumerate(grouped_by_topic.items())]
     return grouped_response
 
 @dashboard_router.get("/gap-in-queries", response_model=List[DomainGap])
@@ -118,9 +117,9 @@ async def get_gap_queries(
 ):
     logger.info("Querying gap-in-queries from 'gap_in_document_count'")
     query = text("""
-        SELECT main_topic, SUM(count) AS total_count 
+        SELECT main_topic, SUM(count) AS total_count
         FROM gap_in_document_count
-        GROUP BY main_topic 
+        GROUP BY main_topic
         ORDER BY total_count DESC
     """)
     result = await db.execute(query)
@@ -141,9 +140,9 @@ async def get_most_referenced_file(
 ):
     logger.info("Querying most referenced files from 'top_queries'")
     query = text("""
-        SELECT LOWER(TRIM(source)) AS source, SUM(count) AS total_count 
-        FROM top_queries 
-        GROUP BY LOWER(TRIM(source)) 
+        SELECT LOWER(TRIM(source)) AS source, SUM(count) AS total_count
+        FROM top_queries
+        GROUP BY LOWER(TRIM(source))
         ORDER BY total_count DESC
     """)
     result = await db.execute(query)
@@ -242,9 +241,9 @@ async def websocket_gap_queries(websocket: WebSocket):
         while True:
             async with AsyncSessionLocal() as db:
                 query = text("""
-                    SELECT main_topic, SUM(count) AS total_count 
+                    SELECT main_topic, SUM(count) AS total_count
                     FROM gap_in_document_count
-                    GROUP BY main_topic 
+                    GROUP BY main_topic
                     ORDER BY total_count DESC
                 """)
                 result = await db.execute(query)
@@ -270,9 +269,9 @@ async def websocket_most_referenced_file(websocket: WebSocket):
         while True:
             async with AsyncSessionLocal() as db:
                 query = text("""
-                    SELECT LOWER(TRIM(source)) AS source, SUM(count) AS total_count 
-                    FROM top_queries 
-                    GROUP BY LOWER(TRIM(source)) 
+                    SELECT LOWER(TRIM(source)) AS source, SUM(count) AS total_count
+                    FROM top_queries
+                    GROUP BY LOWER(TRIM(source))
                     ORDER BY total_count DESC
                 """)
                 result = await db.execute(query)
@@ -298,7 +297,7 @@ async def websocket_top_queries(websocket: WebSocket):
         while True:
             async with AsyncSessionLocal() as db:
                 query = text("""
-                    SELECT source, topic, count, query, llm_response 
+                    SELECT source, topic, count, query, llm_response
                     FROM top_queries
                     ORDER BY count DESC
                 """)
@@ -315,7 +314,7 @@ async def websocket_top_queries(websocket: WebSocket):
                     "llm_response": row[4],
                 })
 
-            grouped_response = [{"topic": topic, "queries": queries} for topic, queries in grouped_by_topic.items()]
+            grouped_response = [{"uniqueId":idx,"topic": topic, "queries": queries} for idx,(topic, queries) in enumerate(grouped_by_topic.items())]
             await websocket.send_json(grouped_response)
             await asyncio.sleep(5)
     except WebSocketDisconnect:
@@ -323,4 +322,5 @@ async def websocket_top_queries(websocket: WebSocket):
     except Exception as e:
         logger.error(f"Error in websocket_top_queries: {e}")
         manager.disconnect(websocket)
+
 
