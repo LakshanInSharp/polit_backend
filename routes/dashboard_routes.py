@@ -10,9 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from database.db import AsyncSessionLocal
 from models.user_model import User
+
 from schemas.domaingaps_schema import DomainGap
 from service.user_service import get_current_user, get_current_user_ws, get_db
-from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_sessions, serialize_query
+from service.dashboard_service import compute_avg_duration, get_active_users_by_period, get_avg_searches_per_user, get_sessions, serialize_query
 from schemas.querycounts_schema import QueryCount, FileCount
 from utils.websocket_manager import manager
 
@@ -56,7 +57,10 @@ async def get_average_session_length(
     logger.info(f"Previous average session duration: {previous_avg} seconds")
 
     if previous_avg == 0:
-        change = 100.0 if current_avg > 0 else 0.0
+        if current_avg > 0:
+            change = 100.0
+        else:
+            change = 0.0
     else:
         change = ((current_avg - previous_avg) / previous_avg) * 100
 
@@ -108,7 +112,7 @@ async def get_top_queries(
             "llm_response": row[4],
         })
 
-    grouped_response = [{"topic": topic, "queries": queries} for topic, queries in grouped_by_topic.items()]
+    grouped_response = [{"uniqueId":idx ,"topic": topic, "queries": queries} for idx,(topic, queries) in enumerate(grouped_by_topic.items())]
     return grouped_response
 
 @dashboard_router.get("/gap-in-queries", response_model=List[DomainGap])
@@ -156,6 +160,17 @@ async def get_most_referenced_file(
         ) for row in rows
     ]
 
+@dashboard_router.get("/avg-searches-per-user")
+async def avg_searches_per_user(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+    ):
+    avg = await get_avg_searches_per_user(db)
+    
+    return {
+        "average_searches_per_user": round(avg, 2)
+        }
+ 
 
 async def connect_ws(websocket: WebSocket):
     try:
@@ -177,24 +192,50 @@ async def websocket_avg_session_length(websocket: WebSocket):
     user = await connect_ws(websocket)
     if user is None:
         return  # Connection closed due to no auth
-
+   
     try:
+        logger.info("WebSocket session length handler started")
+
         while True:
+         async with AsyncSessionLocal() as db:
             now = datetime.now(timezone.utc)
             this_month = now.month
             this_year = now.year
-            prev_month = 12 if this_month == 1 else this_month - 1
-            prev_year = this_year - 1 if this_month == 1 else this_year
+            logger.info(f"Current date: {this_year}-{this_month}")
 
-            async with AsyncSessionLocal() as db:
-                current_sessions = await get_sessions(db, this_year, this_month)
-                previous_sessions = await get_sessions(db, prev_year, prev_month)
+            if this_month == 1:
+                prev_month = 12
+                prev_year = this_year - 1
+            else:
+                prev_month = this_month - 1
+                prev_year = this_year
+
+            logger.info(f"Fetching sessions for current month: {this_year}-{this_month}")
+            current_sessions = await get_sessions(db, this_year, this_month)
+            logger.info(f"Fetched {len(current_sessions)} sessions for current month")
+
+            logger.info(f"Fetching sessions for previous month: {prev_year}-{prev_month}")
+            previous_sessions = await get_sessions(db, prev_year, prev_month)
+            logger.info(f"Fetched {len(previous_sessions)} sessions for previous month")
 
             current_avg = compute_avg_duration(current_sessions)
             previous_avg = compute_avg_duration(previous_sessions)
 
-            change = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg else (100.0 if current_avg else 0.0)
-            minutes, seconds = divmod(int(current_avg), 60)
+            logger.info(f"Current average session duration: {current_avg} seconds")
+            logger.info(f"Previous average session duration: {previous_avg} seconds")
+
+            if previous_avg == 0:
+                if current_avg > 0:
+                    change = 100.0
+                else:
+                    change = 0.0
+            else:
+                change = ((current_avg - previous_avg) / previous_avg) * 100
+
+            minutes = int(current_avg // 60)
+            seconds = int(current_avg % 60)
+
+            logger.info("Average session length calculated successfully")
 
             result = {
                 "current_month": calendar.month_name[this_month],
@@ -202,7 +243,7 @@ async def websocket_avg_session_length(websocket: WebSocket):
                 "formatted": f"{minutes}m {seconds}s",
                 "percentage_change_vs_last_month": round(change, 2)
             }
-
+            logger.info(f"Sending result over WebSocket: {result}")
             await websocket.send_json(result)
             await asyncio.sleep(5)
     except WebSocketDisconnect:
@@ -315,7 +356,7 @@ async def websocket_top_queries(websocket: WebSocket):
                     "llm_response": row[4],
                 })
 
-            grouped_response = [{"topic": topic, "queries": queries} for topic, queries in grouped_by_topic.items()]
+            grouped_response = [{"uniqueId":idx,"topic": topic, "queries": queries} for idx,(topic, queries) in enumerate(grouped_by_topic.items())]
             await websocket.send_json(grouped_response)
             await asyncio.sleep(5)
     except WebSocketDisconnect:
@@ -324,3 +365,26 @@ async def websocket_top_queries(websocket: WebSocket):
         logger.error(f"Error in websocket_top_queries: {e}")
         manager.disconnect(websocket)
 
+
+
+@dashboard_router.websocket("/ws/avg-searches-per-user")
+async def websocket_vg_searches_per_user(websocket: WebSocket):
+    user = await connect_ws(websocket)
+    if user is None:
+        return
+    
+    try:
+        while True:
+            async with AsyncSessionLocal() as db:
+                avg = await get_avg_searches_per_user(db)
+
+            result = {
+              "average_searches_per_user": round(avg, 2)
+             }
+            await websocket.send_json(result)
+            await asyncio.sleep(5)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"Error in websocket_top_queries: {e}")
+        manager.disconnect(websocket)

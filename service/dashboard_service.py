@@ -4,6 +4,8 @@ from sqlalchemy import and_, distinct, extract, func, or_, select
 from models.user_model import Role, Session, User
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from  models.top_query_gap_doc import TopQueries
+
 
 async def get_sessions(db, year, month):
     result = await db.execute(
@@ -129,6 +131,21 @@ async def get_active_users_by_period(db: AsyncSession, granularity: str = "daily
 
     return results
 
+
+
+async def get_avg_searches_per_user(db: AsyncSession):
+    total_searches_stmt = select(func.sum(TopQueries.count))
+    unique_users_stmt = select(func.count(func.distinct(TopQueries.user_id)))
+
+    total_result = await db.execute(total_searches_stmt)
+    user_result = await db.execute(unique_users_stmt)
+
+    total_searches = total_result.scalar() or 0
+    unique_users = user_result.scalar() or 1  # avoid division by zero
+
+    average = total_searches / unique_users
+    return average
+
 def serialize_query(q):
     data = q.model_dump()
     for key, value in data.items():
@@ -145,3 +162,5 @@ def clean_query_dict(q: dict) -> dict:
         # Option 2: Or sanitize page_no, e.g.:
         # q['page_no'] = str(q['page_no']).replace("{", "").replace("}", "")
     return q
+
+
