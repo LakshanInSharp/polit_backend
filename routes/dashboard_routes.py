@@ -166,9 +166,9 @@ async def avg_searches_per_user(
     user: User = Depends(get_current_user)
     ):
     avg = await get_avg_searches_per_user(db)
-    
+
     return {
-        "average_searches_per_user": round(avg, 2)
+        "average_searches_per_user": round(avg, 2),
         }
  
 
@@ -376,11 +376,11 @@ async def websocket_vg_searches_per_user(websocket: WebSocket):
     try:
         while True:
             async with AsyncSessionLocal() as db:
-                avg = await get_avg_searches_per_user(db)
-
-            result = {
-              "average_searches_per_user": round(avg, 2)
-             }
+             avg = await get_avg_searches_per_user(db)
+             result = {
+              "average_searches_per_user": round(avg, 2),
+           
+              }
             await websocket.send_json(result)
             await asyncio.sleep(5)
     except WebSocketDisconnect:

@@ -4,7 +4,7 @@ from sqlalchemy import and_, distinct, extract, func, or_, select
 from models.user_model import Role, Session, User
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from  models.top_query_gap_doc import TopQueries
+from models.top_query_gap_doc import TopQueries
 
 
 async def get_sessions(db, year, month):
