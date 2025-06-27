@@ -180,10 +180,7 @@ async def connect_ws(websocket: WebSocket):
         return user
     except HTTPException as e:
         logger.warning(f"WebSocket connection refused due to auth error: {e.detail}")
-        try:
-            await websocket.close(code=1008)  # Policy violation
-        except RuntimeError:
-            pass
+      
         return None
 
 

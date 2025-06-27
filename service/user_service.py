@@ -57,10 +57,14 @@ async def get_current_user(
     sess = res.scalar_one_or_none()
     if not sess:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
+    
+    start_time = sess.start_time
+    if start_time.tzinfo is None:
+       start_time = start_time.replace(tzinfo=timezone.utc)
 
     # EXPIRATION CHECK: session older than 5 days 
     now = datetime.now(timezone.utc)
-    session_age = now - sess.start_time
+    session_age = now - start_time
     if session_age > timedelta(days=5):
         sess.end_time = now
         await db.commit()
